@@ -211,7 +211,7 @@ summarize_all(diags,mean)
 
 Discussion here
 
-We are seeing through the utilization of a generalized linear model, an auc of 0.7626. This is not the most accurate score, and after doing a cross validation of the data we found the auc to increase to 0.76646. Thus, we are not seeing signs of overfitting due to such a slight change, however, this is not the greatest model specific to our data.
+We are seeing through the utilization of a generalized linear model, an auc of 0.7626. This is not the most accurate score, and after doing a cross validation of the data we found the auc to increase to 0.76646. Thus, we are not seeing signs of overfitting due to such a slight change, however, this is not the greatest model specific to our data. So it would not be preferred and we should see how a non-parametric classifier will operate.
 
 ### Non-Parametric Classifier
 
@@ -271,6 +271,7 @@ summarize_all(diags,mean)
 ```
 
 Discussion
+ We are seeing a much higher auc variable of 0.8659 which is not the best performance metric, but very good given the size and scope of our data. After performing a cross validation, we see the auc increase to 0.86628 which shows there are no signs of overfitting with our data. If we were to choose the correct approach to modeling our data, I would prefer to use the knn methodology for further analysis and implementation of our dataset. 
 
 
 ### Regression/Numeric Prediction
@@ -336,6 +337,8 @@ mean(diags)
 
 Discussion
 
+The Mean Squared Error for the dataset is a very high number of 71.77 which is very bad from a prediction standpoint. After performing a cross-validation of the linear model, the MSE changes to 68.355 which is a slight improvement. In final, linear regression is a very poor way to model the data as it performs terribly. There doesn't seem to be overfitting on the linear regression model, but this is probably due to such a poor model.
+
 ### Python 
 
 ```{R}
@@ -363,6 +366,8 @@ heartDataset.filter(['ChestPainType','Heart_Disease']).query('Heart_Disease == "
 ```
 
 Discussion
+
+By convering the heart dataset from an r object to a python object using the .r method, I am able to perform queries on the data in a python syntax. For the above are examples showing how to further query the data for statistical analysis in python. Querying the different types of heart disease with the greater number of patients.
 
 ### Concluding Remarks
 
