@@ -46,60 +46,228 @@ class_diag <- function(score, truth, positive, cutoff=.5){
 
 # Mining, Classification, Prediction
 
-## Name and EID here
+## Vincent Lebovitz vjl369
 
 ### Introduction 
 
-Paragraph or two introducing your datasets and variables, why they are interesting to you, etc. See instructions for more information
+I will be doing my project on the prediction and classification utilizing a heart disease dataset. We have different metrics such as Cholesterol, Age, Resting Blood Pressure, and will be using these metrics to determine if a patient has heart disease or not. As a student very interested in the field of computational biochemistry, I believe this will help me gain a large understanding for the procdures necessary to apply PCA, and machine learning to a variety of similar datasets.
 
 ```{R}
 library(tidyverse)
+library(knitr)
+library(tidytext)
 # read your datasets in here, e.g., with read_csv()
 
+#read in the heart datasets
+heart <- read_csv("heart.csv")
 # if your dataset needs tidying, do so here
 
 # any other code here
+heart <- heart %>% mutate(Heart_Disease=ifelse(HeartDisease==1,"yes","no")) 
+#glimpse of dataset
+glimpse(heart)
 ```
 
 ### Cluster Analysis
 
 ```{R}
 library(cluster)
+library(GGally)
 # clustering code here
+
+#create the correlation matrix
+cormat <- heart %>% select(Age,Cholesterol,MaxHR,RestingBP) %>% cor(use="pair") %>% round(3)
+cormat
+#tidy the correlation matrix
+tidycor <- cormat %>% as.data.frame %>% 
+  rownames_to_column("Variable1") %>%
+  pivot_longer(-1,names_to="Variable2",values_to="correlation")
+#plot the correlation matrix
+tidycor %>% ggplot(aes(Variable1,Variable2,fill=correlation))+
+  geom_tile()+
+  scale_fill_gradient2(low="red",mid="white",high="blue")+ #makes colors!
+  geom_text(aes(label=round(correlation,2)),color = "black", size = 4)+ #overlay values
+  theme(axis.text.x = element_text(angle = 90, hjust=1))+ #flips x-axis labels
+  coord_fixed()+ggtitle("Correlation Matrix of Heart Disease Indicators")
+
+
+#I selected the numeric variables age, cholesterol, max heart rate, and resting beats per minute
+clust_dat<-heart%>%dplyr::select(Age,Cholesterol,MaxHR,RestingBP)
+
+#graph the silouette width to find the correct number of clusters
+sil_width<-vector() #empty vector to hold mean sil width
+for(i in 2:10){  
+  kms <- kmeans(clust_dat,centers=i) #compute k-means solution
+  sil <- silhouette(kms$cluster,dist(clust_dat)) #get sil widths
+  sil_width[i]<-mean(sil[,3]) #take averages (higher is better)
+}
+ggplot()+geom_line(aes(x=1:10,y=sil_width))+scale_x_continuous(name="k",breaks=1:10)+ggtitle("Silouette Width for Cluster Analysis")
+
+#based on the silouette width graph, we plan on using 2 clusters for further analysis
+#use the pam method
+pam1<-clust_dat%>%pam(k=2)
+#pam1
+#save this in a cluster dataset
+pamclust<-clust_dat%>%mutate(cluster=as.factor(pam1$clustering)) 
+#compute the mean for the cluster set
+pamclust%>%group_by(cluster)%>%summarize_if(is.numeric,mean,na.rm=T)
+#create the medioids for the data
+clust_dat%>%slice(pam1$id.med)
+#plot the clusters in 3d
+ggpairs(pamclust, aes(color=cluster))+ggtitle("Cluster Plot 3D")
+
 ```
 
 Discussion of clustering here
+
+From looking at the silouette width we are seeing the recommended number of clusters for the dataset is 2 clusters. Additionally, a correlation matrix was utilized and was found that many of the variables have little relation to each other. The highest being MaxHR to Age ina negative relationship. From a cluster perspective both Age and RestingBP have similar cluster density graphs. For the MaxHR density plot the first cluster represents more of the larger values. Lasrlt, Cholesterol is showing a great ability to differentiate between cluster 1 and cluster 2 as many of the data points in cluster2 are the lower values of the spectrum. 
     
     
 ### Dimensionality Reduction with PCA
 
 ```{R}
 # PCA code here
+heartpca <- heart %>% select(Age,Cholesterol,MaxHR,RestingBP) %>% scale
+
+#run the pca test for this dataset
+princomp(heartpca, cor=T) -> pca1
+#look at signs and magnitudes of loadings to get 85% variance
+#From this we can see we only need 3 PC Scores
+summary(pca1,loadings = T)
+#we can see that 3 PC Scores Result in a great deal of variance for the dataset
+
+
+#plot findings in dimensional reductivity for further analysis
+
+#scatter plot showing the differentiation between heart disease and sex of patient
+heart %>% mutate(PC1=pca1$scores[, 1], PC2=pca1$scores[, 2],PC3=pca1$scores[, 3]) %>% 
+  ggplot(aes(x=PC1, y=PC2, color=Heart_Disease,shape=Sex)) + geom_point(alpha=0.5)
+#relationship to indicators and their trends of PC loading scores
+pca1$loadings[1:4, 1:2] %>% as.data.frame %>% rownames_to_column %>% 
+ggplot() + geom_hline(aes(yintercept=0), lty=2) + 
+  geom_vline(aes(xintercept=0), lty=2) + ylab("PC2") + xlab("PC1") + 
+  geom_segment(aes(x=0, y=0, xend=Comp.1, yend=Comp.2), arrow=arrow(), col="red") + 
+  geom_label(aes(x=Comp.1*1.1, y=Comp.2*1.1, label=rowname))+ggtitle("Relationship of Heart Disease Indicators to Principle Component Loadings")
+
 ```
 
-Discussions of PCA here. 
+Discussions of PCA here.
+
+I wanted to identify the vectors which direction they fall towards on a PC scores graph. Age shows a direct relationship with both PC1 and PC2  along with RestingBP. Cholesterol and MaxHR show an inverse relationship where with the decrease in PC1 there's an increase in PC2. We can see from the scatter plot created of PC Scores on a yes/no basis on heart disease that a lower PC1 score is usually an indicator of no whereas for PC2 there's much variability so it's harder to determine the spread from the plot.
 
 ###  Linear Classifier
 
 ```{R}
-# linear classifier code here
+#-------------------------------------------------------
+#second use a logistic regression classifier
+logistic_fit <- glm(Heart_Disease=="yes" ~ Age+Cholesterol+MaxHR+RestingBP, data=heart, family="binomial")
+#your code here
+#Generate the predicted score/probs for original observations
+prob_reg <- predict(logistic_fit,type="response")
+#prob_reg %>% round(3)
+
+
+#Compute Classification Diagnostics
+class_diag(prob_reg,heart$Heart_Disease,positive="yes")
+
+#Report a Confusion Matrix
+
+#In the confusion matrix 
+# 1 - represents someone with heart disease
+# 2 - represents someone without heart disease
+table(truth = heart$HeartDisease, predictions = prob_reg>.5)
+
 ```
 
 ```{R}
 # cross-validation of linear classifier here
+set.seed(322)
+k=10
+
+data<-sample_frac(heart) #randomly order rows
+folds <- rep(1:k, length.out=nrow(data)) #create folds
+
+diags<-NULL
+
+i=1
+for(i in 1:k){
+# create training and test sets
+train<-data[folds!=i,] 
+test<-data[folds==i,] 
+truth<-test$Heart_Disease
+
+# train model
+fit <- glm(Heart_Disease=="yes" ~ Age+Cholesterol+MaxHR+RestingBP, data=heart, family="binomial")
+
+# test model
+probs <-predict(fit,newdata = test,type="response")
+
+# get performance metrics for each fold
+diags<-rbind(diags,class_diag(probs,truth,positive="yes")) }
+
+#average performance metrics across all folds
+summarize_all(diags,mean)
 ```
 
 Discussion here
+
+We are seeing through the utilization of a generalized linear model, an auc of 0.7626. This is not the most accurate score, and after doing a cross validation of the data we found the auc to increase to 0.76646. Thus, we are not seeing signs of overfitting due to such a slight change, however, this is not the greatest model specific to our data.
 
 ### Non-Parametric Classifier
 
 ```{R}
 library(caret)
 # non-parametric classifier code here
+knn_fit <- knn3(Heart_Disease=="yes" ~ Age+Cholesterol+MaxHR+RestingBP, data=heart)
+
+
+#your code here
+prob_knn <- predict(knn_fit,heart)[,2]
+#prob_knn %>% round(3)
+
+#Compute Classification Diagnostics
+class_diag(prob_knn,heart$Heart_Disease,positive="yes")
+
+#Report a Confusion Matrix
+knn_fit2 <- knn3(factor(HeartDisease==1,levels=c("TRUE","FALSE")) ~ Age+Cholesterol+MaxHR+RestingBP, data=heart)
+#create prediction columns based on the knn fit
+y_hat_knn <- predict(knn_fit2,heart)
+
+#report the confusion matrix based on the truth and prediction counts
+table(truth= factor(heart$HeartDisease==1, levels=c("TRUE","FALSE")),
+      prediction= factor(y_hat_knn[,1]>.5, levels=c("TRUE","FALSE")))
+
+
 ```
 
 ```{R}
 # cross-validation of np classifier here
+set.seed(322)
+k=10
+
+data<-sample_frac(heart) #randomly order rows
+folds <- rep(1:k, length.out=nrow(data)) #create folds
+
+diags<-NULL
+
+i=1
+for(i in 1:k){
+# create training and test sets
+train<-data[folds!=i,] 
+test<-data[folds==i,] 
+truth<-test$Heart_Disease
+
+# train model
+fit <- knn3(Heart_Disease=="yes" ~ Age+Cholesterol+MaxHR+RestingBP, data=heart)
+
+# test model
+probs <- predict(fit,newdata = test)[,2]
+
+# get performance metrics for each fold
+diags<-rbind(diags,class_diag(probs,truth,positive="yes")) }
+
+#average performance metrics across all folds
+summarize_all(diags,mean)
 ```
 
 Discussion
@@ -109,10 +277,61 @@ Discussion
 
 ```{R}
 # regression model code here
+
+#Regression model for predicting the age of person based on Cholesterol,MaxHR,and RestingBP
+
+# linear classifier code here
+linClassifierData <- heart %>% select(Age,Cholesterol,MaxHR,RestingBP,Heart_Disease)
+
+#first use a linear regression classifier
+linear_fit <- lm(heart$Age ~ Cholesterol+MaxHR+RestingBP, data=heart)
+#your code here
+#Generate the predicted score/probs for original observations
+score<- predict(linear_fit)
+#score %>% round(3)
+
+#Compute Mean Squared Error
+mean((heart$Age-score)^2)
+
+
+
+
 ```
 
 ```{R}
 # cross-validation of regression model here
+# cross-validation of linear classifier here
+set.seed(322)
+k=10
+
+data<-sample_frac(heart) #randomly order rows
+folds <- rep(1:k, length.out=nrow(data)) #create folds
+
+diags<-NULL
+
+i=1
+for(i in 1:k){
+# create training and test sets
+train<-data[folds!=i,] 
+test<-data[folds==i,] 
+
+
+# train model
+fit <- lm(Age ~ Cholesterol+MaxHR+RestingBP, data=train)
+
+# test model
+probs <-predict(fit,newdata = test)
+
+# get performance metrics for each fold
+diags<-mean((test$Age-probs)^2) 
+
+#get the MSE for each fold
+#MSE <- mean((test$Heart_Disease-probs)^2) 
+}
+
+#Computes average MSE across all folds
+mean(diags)
+
 ```
 
 Discussion
@@ -125,6 +344,22 @@ library(reticulate)
 
 ```{python}
 # python code here
+heartDataset = r.heart
+#aggregate the chest pain type by total number in dataset
+heartDataset.filter(['ChestPainType','Heart_Disease']).query('Heart_Disease == "yes"').groupby(['ChestPainType']).agg(['size'])
+# 
+# def positivePatients(dataSet):
+#   count = 0
+#   for i in dataset.HeartDisease:
+#     if(i==1):
+#       count += 1
+#   return count
+# 
+# print(positivePatients(heartDataset))
+# 
+
+
+
 ```
 
 Discussion
