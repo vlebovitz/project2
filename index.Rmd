@@ -292,8 +292,7 @@ score<- predict(linear_fit)
 #score %>% round(3)
 
 #Compute Mean Squared Error
-mean((heart$Age-score)^2)
-
+paste0("Mean Squared Error: ",mean((heart$Age-score)^2))
 
 
 
@@ -331,7 +330,8 @@ diags<-mean((test$Age-probs)^2)
 }
 
 #Computes average MSE across all folds
-mean(diags)
+
+paste0("Average MSE Across the Folds: ", mean(diags))
 
 ```
 
@@ -347,27 +347,25 @@ library(reticulate)
 
 ```{python}
 # python code here
-heartDataset = r.heart
-#aggregate the chest pain type by total number in dataset
-heartDataset.filter(['ChestPainType','Heart_Disease']).query('Heart_Disease == "yes"').groupby(['ChestPainType']).agg(['size'])
-# 
-# def positivePatients(dataSet):
-#   count = 0
-#   for i in dataset.HeartDisease:
-#     if(i==1):
-#       count += 1
-#   return count
-# 
-# print(positivePatients(heartDataset))
-# 
+import pandas as pd
 
+heartDataset = r.heart
+#aggregate the number of patients with heart disease by their chest pain type
+heartDataset.filter(['ChestPainType','Heart_Disease']).query('Heart_Disease == "yes"').groupby(['ChestPainType']).agg(['size'])
+
+#Query the patients and their attributes with/without heart disease for further analysis
+patientsWithHeartDisease = heartDataset.loc[heartDataset['HeartDisease'] == 1].filter(['Age','Sex','ChestPainType','Cholesterol','MaxHR'])
+patientsWithoutHeartDisease = heartDataset.loc[heartDataset['HeartDisease'] == 0].filter(['Age','Sex','ChestPainType','Cholesterol','MaxHR'])
+#Maintain Records of patients with/without heart disease
+print(patientsWithHeartDisease.head(20))
+print(patientsWithoutHeartDisease.head(20))
 
 
 ```
 
 Discussion
 
-By convering the heart dataset from an r object to a python object using the .r method, I am able to perform queries on the data in a python syntax. For the above are examples showing how to further query the data for statistical analysis in python. Querying the different types of heart disease with the greater number of patients.
+By convering the heart dataset from an r object to a python object using the .r method, I am able to perform queries on the data in a python syntax. For the above are examples showing how to further query the data for statistical analysis in python. Querying the different types of heart disease with the greater number of patients. Along with keeping records of patients with/without heart disease for further analysis. I struggled in calling python from r due to errors, but this is something I will work on to improve the project
 
 ### Concluding Remarks
 
