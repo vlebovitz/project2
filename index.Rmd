@@ -50,7 +50,7 @@ class_diag <- function(score, truth, positive, cutoff=.5){
 
 ### Introduction 
 
-I will be doing my project on the prediction and classification utilizing a heart disease dataset. We have different metrics such as Cholesterol, Age, Resting Blood Pressure, and will be using these metrics to determine if a patient has heart disease or not. As a student very interested in the field of computational biochemistry, I believe this will help me gain a large understanding for the procdures necessary to apply PCA, and machine learning to a variety of similar datasets.
+I will be doing my project on the prediction and classification utilizing a heart disease dataset. We have different metrics such as Cholesterol, Age, Resting Blood Pressure, and will be using these metrics to determine if a patient has heart disease or not. As a student very interested in the field of computational biochemistry, I believe this will help me gain a large understanding for the procdures necessary to apply PCA, and machine learning to a variety of similar datasets. I found the dataset on kaggle, and this is a diagnostic dataset of a multitude of variables to choose from as described in the earlier portion. In total, there are 918 observations of "patient" records.
 
 ```{R}
 library(tidyverse)
